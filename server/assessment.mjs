@@ -446,6 +446,8 @@ export class AssessmentManager {
     this.emit(record, 'collector', { collector: 'web', label: entry.label, status: 'running' });
     const result = await runWebAssessment({
       target: record.options.target,
+      aiConfig: record.options.aiReview && this.config.ai.available
+        ? { ...this.config.ai, sessionId: record.id } : null,
       onUpdate: ({ checks, findings, ...web }) => {
         record.machine.web = web;
         record.machine.configChecks = checks;

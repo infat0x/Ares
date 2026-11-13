@@ -3,6 +3,7 @@ import { request as httpsRequest } from 'node:https';
 import { randomBytes } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 import { buildFinding, sortFindings } from './findings.mjs';
+import { chooseWebAction } from './ai/planner.mjs';
 
 const SOURCE = { name: 'OWASP Web Security Testing Guide', url: 'https://wstg.owasp.org/v4.2/' };
 const MAX_REQUESTS = 10;
@@ -148,11 +149,12 @@ export function webFindings(checks) {
   }));
 }
 
-export async function runWebAssessment({ target, onUpdate = () => {}, requestPage = requestWebPage, intervalMs = 1000 }) {
+export async function runWebAssessment({ target, aiConfig = null, onUpdate = () => {}, requestPage = requestWebPage, intervalMs = 1000, chooseAction = chooseWebAction }) {
   const initial = new URL(target.url);
   let current = initial;
-  const state = { status: 'running', phase: 'web', requests: 0, maxRequests: MAX_REQUESTS, warnings: [], checks: [], findings: [], endpoint: safeUrl(initial), statusCode: null };
-  const deadline = Date.now() + 30000;
+  const state = { status: 'running', phase: 'web', requests: 0, maxRequests: MAX_REQUESTS, warnings: [], checks: [], findings: [], endpoint: safeUrl(initial), statusCode: null,
+    planner: { status: aiConfig ? 'pending' : 'not-requested', decisions: [] } };
+  let deadline = Date.now() + 30000;
   let lastRequest = 0;
   const publish = () => {
     state.findings = webFindings(state.checks);
@@ -200,45 +202,90 @@ export async function runWebAssessment({ target, onUpdate = () => {}, requestPag
         const parameters = [...new Set(current.searchParams.keys())].filter((name) =>
           current.searchParams.getAll(name).length === 1 && !/pass|token|key|auth|secret|csrf/i.test(name)).slice(0, 2);
         if (!parameters.length) state.warnings.push('Input probes need an existing non-credential query parameter in the selected URL.');
-        for (const [parameterIndex, parameter] of parameters.entries()) {
+        const actions = parameters.flatMap((parameter, index) => {
+          const numeric = /^\d+$/.test(current.searchParams.get(parameter));
+          return [
+            { id: `sql-${index}`, kind: 'sql', parameter, numeric, cost: 4 },
+            ...(!numeric ? [{ id: `reflection-${index}`, kind: 'reflection', parameter, numeric, cost: 1 }] : [])
+          ];
+        });
+        let planning = Boolean(aiConfig);
+        let plannerCalls = 0;
+        while (actions.length && state.requests < MAX_REQUESTS) {
+          const available = actions.filter((action) => action.cost <= MAX_REQUESTS - state.requests);
+          if (!available.length) {
+            state.warnings.push('Remaining request budget cannot fit another input check.');
+            break;
+          }
+          let action = available[0];
+          if (planning) {
+            if (plannerCalls >= 4) {
+              state.planner.status = 'limit-reached';
+              break;
+            }
+            state.planner.status = 'running';
+            publish();
+            const started = Date.now();
+            plannerCalls++;
+            try {
+              action = await chooseAction({ aiConfig, actions: available, checks: state.checks, decisions: state.planner.decisions, remainingRequests: MAX_REQUESTS - state.requests });
+              if (action && !available.includes(action)) throw new Error('AI planner returned an unavailable action.');
+            } catch {
+              state.warnings.push('AI planning failed. Remaining checks use the standard sequence.');
+              state.planner.status = 'error';
+              planning = false;
+              action = available[0];
+            } finally {
+              deadline += Date.now() - started;
+            }
+            if (!action) {
+              state.planner.status = 'stopped';
+              break;
+            }
+          }
+          actions.splice(actions.indexOf(action), 1);
+          state.planner.decisions.push({ action: action.id, selectedBy: planning ? 'ai' : 'standard', requestsBefore: state.requests });
+          const parameter = action.parameter;
           const probe = new URL(current);
           const original = current.searchParams.get(parameter);
           const numeric = /^\d+$/.test(original);
-          probe.searchParams.set(parameter, `${original}'`);
-          const sqlPage = await request(probe);
-          const family = SQL_ERRORS.find(([, pattern]) => pattern.test(sqlPage.body) && !pattern.test(response.body))?.[0] ?? null;
-          state.checks.push({ id: 'web-sql-error', category: 'web', status: family ? 'weak' : 'ok', observed: { parameter, databaseErrorFamily: family }, detail: 'Adding one quote produced a database error signature absent from the baseline response. This is a suspected injection signal.' });
-          publish();
-          if (sqlPage.status >= 500 && !family) throw new Error('An input probe returned an unexpected server error. Existing observations were retained.');
-          if (parameterIndex === 0 && MAX_REQUESTS - state.requests >= 3) {
-            const repeated = await request(current);
-            if (repeated.status !== response.status || repeated.status >= 500) throw new Error('The endpoint baseline changed after the input probe. Coverage is partial.');
-            if (comparableBody(response, [original]) !== comparableBody(repeated, [original])) {
-              state.checks.push({ id: 'web-sql-boolean', category: 'web', status: 'unknown', observed: { parameter, baselineStable: false }, detail: 'The repeated baseline changed before boolean SQL verification.' });
-              state.warnings.push('The response baseline was unstable. Boolean SQLi comparison is inconclusive.');
-              publish();
-              break;
-            }
-            const whenTrue = numeric ? `${original} AND 1=1` : `${original}' AND '1'='1'-- `;
-            const whenFalse = numeric ? `${original} AND 1=2` : `${original}' AND '1'='2'-- `;
-            probe.searchParams.set(parameter, whenTrue);
-            const truePage = await request(probe);
-            if (truePage.status >= 500) throw new Error('The boolean SQL probe returned an unexpected server error. Existing observations were retained.');
-            probe.searchParams.set(parameter, whenFalse);
-            const falsePage = await request(probe);
-            const comparison = compareBooleanSqlResponses(response, repeated, truePage, falsePage, [original, whenTrue, whenFalse]);
-            state.checks.push({ id: 'web-sql-boolean', category: 'web', status: comparison.detected ? 'weak' : comparison.baselineStable ? 'info' : 'unknown',
-              observed: { parameter, syntax: numeric ? 'numeric' : 'quoted', ...comparison },
-              detail: 'A repeated baseline and paired true/false SQL predicates were compared after normalizing reflected input. The true response matched the stable baseline while the false response differed only when detected=true. This behavior requires application-context validation.' });
+          if (action.kind === 'sql') {
+            probe.searchParams.set(parameter, `${original}'`);
+            const sqlPage = await request(probe);
+            const family = SQL_ERRORS.find(([, pattern]) => pattern.test(sqlPage.body) && !pattern.test(response.body))?.[0] ?? null;
+            state.checks.push({ id: 'web-sql-error', category: 'web', status: family ? 'weak' : 'ok', observed: { parameter, databaseErrorFamily: family }, detail: 'Adding one quote produced a database error signature absent from the baseline response. This is a suspected injection signal.' });
             publish();
-            if (falsePage.status >= 500) throw new Error('The boolean SQL probe returned a server error. Existing observations were retained.');
-            if (!comparison.baselineStable) state.warnings.push('The response baseline was unstable. Boolean SQLi comparison is inconclusive.');
-          } else if (sqlPage.status >= 500) {
-            throw new Error('The database error signal was preserved. The remaining request budget cannot verify endpoint recovery.');
-          } else if (parameterIndex === 0) {
-            state.warnings.push('The remaining request budget could not fit boolean SQLi verification.');
+            if (sqlPage.status >= 500 && !family) throw new Error('An input probe returned an unexpected server error. Existing observations were retained.');
+            if (MAX_REQUESTS - state.requests >= 3) {
+              const repeated = await request(current);
+              if (repeated.status !== response.status || repeated.status >= 500) throw new Error('The endpoint baseline changed after the input probe. Coverage is partial.');
+              if (comparableBody(response, [original]) !== comparableBody(repeated, [original])) {
+                state.checks.push({ id: 'web-sql-boolean', category: 'web', status: 'unknown', observed: { parameter, baselineStable: false }, detail: 'The repeated baseline changed before boolean SQL verification.' });
+                state.warnings.push('The response baseline was unstable. Boolean SQLi comparison is inconclusive.');
+                publish();
+                break;
+              }
+              const whenTrue = numeric ? `${original} AND 1=1` : `${original}' AND '1'='1'-- `;
+              const whenFalse = numeric ? `${original} AND 1=2` : `${original}' AND '1'='2'-- `;
+              probe.searchParams.set(parameter, whenTrue);
+              const truePage = await request(probe);
+              if (truePage.status >= 500) throw new Error('The boolean SQL probe returned an unexpected server error. Existing observations were retained.');
+              probe.searchParams.set(parameter, whenFalse);
+              const falsePage = await request(probe);
+              const comparison = compareBooleanSqlResponses(response, repeated, truePage, falsePage, [original, whenTrue, whenFalse]);
+              state.checks.push({ id: 'web-sql-boolean', category: 'web', status: comparison.detected ? 'weak' : comparison.baselineStable ? 'info' : 'unknown',
+                observed: { parameter, syntax: numeric ? 'numeric' : 'quoted', ...comparison },
+                detail: 'A repeated baseline and paired true/false SQL predicates were compared after normalizing reflected input. The true response matched the stable baseline while the false response differed only when detected=true. This behavior requires application-context validation.' });
+              publish();
+              if (falsePage.status >= 500) throw new Error('The boolean SQL probe returned a server error. Existing observations were retained.');
+              if (!comparison.baselineStable) state.warnings.push('The response baseline was unstable. Boolean SQLi comparison is inconclusive.');
+            } else if (sqlPage.status >= 500) {
+              throw new Error('The database error signal was preserved. The remaining request budget cannot verify endpoint recovery.');
+            } else {
+              state.warnings.push('The remaining request budget could not fit boolean SQLi verification.');
+            }
+            continue;
           }
-          if (numeric) continue;
           const marker = `<ares-probe-${randomBytes(8).toString('hex')}>`;
           probe.searchParams.set(parameter, marker);
           const reflectedPage = await request(probe);
@@ -247,6 +294,7 @@ export async function runWebAssessment({ target, onUpdate = () => {}, requestPag
           publish();
           if (reflectedPage.status >= 500) throw new Error('The HTML probe returned a server error. Existing observations were retained.');
         }
+        if (state.planner.status === 'running') state.planner.status = 'complete';
       }
     }
     if (response.status < 200 || response.status >= 300) state.warnings.push(`The endpoint returned HTTP ${response.status}. Coverage is limited to that response.`);
@@ -258,6 +306,8 @@ export async function runWebAssessment({ target, onUpdate = () => {}, requestPag
     state.status = state.checks.length ? 'partial' : 'error';
     state.warnings.push(String(error.message).slice(0, 240));
   }
+  if (state.planner.status === 'pending') state.planner.status = 'skipped';
+  if (state.planner.status === 'running') state.planner.status = 'partial';
   state.phase = 'done';
   publish();
   return state;

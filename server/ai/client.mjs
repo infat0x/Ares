@@ -49,7 +49,7 @@ export async function requestJsonCompletion({
   };
   if (new URL(aiConfig.baseUrl).hostname === 'opencode.ai') {
     headers['user-agent'] = 'ares/1.0.0';
-    headers['x-opencode-session'] = randomUUID();
+    headers['x-opencode-session'] = aiConfig.sessionId ?? randomUUID();
   }
 
   try {

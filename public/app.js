@@ -153,7 +153,7 @@ function applyMeta() {
   if (!ai.available) toggle.checked = false;
 
   $('ai-hint').textContent = ai.available
-    ? 'Sends only software/version facts and configuration check details. Hostnames, IP addresses, usernames and logs stay on this machine.'
+    ? 'Sends software/version facts and configuration observations. With web input probes enabled, AI chooses the next check from previous results. Target URLs, parameter names and response bodies stay local.'
     : 'No backend AI provider is configured. The local Windows assessment still runs normally.';
   $('ai-note').textContent = ai.available
     ? 'Opt-in only: nothing is sent unless this box is checked before starting, or you press “Run AI review”.'
@@ -793,6 +793,10 @@ function renderNotices() {
   const web = state.live?.web;
   if (web) {
     items.push({ id: 'web-progress', tone: ['partial', 'error'].includes(web.status) ? 'warn' : 'info', title: `Web assessment - ${web.status}`, message: `${web.requests ?? 0}/${web.maxRequests ?? 10} requests. ${web.endpoint ?? ''}` });
+    if (web.planner && web.planner.status !== 'not-requested') {
+      items.push({ id: 'web-planner', tone: web.planner.status === 'error' ? 'warn' : 'info', title: `AI web agent - ${web.planner.status}`,
+        message: (web.planner.decisions ?? []).map((step) => `${step.action} (${step.selectedBy})`).join(', ') || 'Waiting for input checks.' });
+    }
     for (const warning of web.warnings ?? []) items.push({ id: `web:${warning}`, tone: 'warn', title: 'Web coverage', message: warning });
   }
 

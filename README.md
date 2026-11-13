@@ -30,6 +30,8 @@ Rejimi seç və **Start assessment** bas.
 
 Açar lokal `data/ai-settings.json` faylında açıq mətnlə saxlanır.
 
+Web rejimində AI və input probes seçimlərini birlikdə aktivləşdirəndə AI agent əvvəlki müşahidələrə görə növbəti SQLi və ya HTML əksolunma yoxlamasını seçir. Seçilmiş URL-də maksimum 2 uyğun parametr və 4 AI qərarı ilə işləyir. Paneldə seçilən addımlar görünür. AI xətasında standart yoxlamalar davam edir. Hədəf URL-si, parametr adları və cavab mətni planlayıcıya göndərilmir.
+
 ## Əsas qeydlər
 
 - Web yoxlaması maksimum 10 GET sorğusu və sorğular arasında minimum 1 saniyə fasilə ilə işləyir.
