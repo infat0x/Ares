@@ -26,7 +26,7 @@ Rejimi seç və **Start assessment** bas.
 
 ## AI ayarı
 
-**AI settings** bölməsində OpenCode API key daxil edib **Save API key** bas. Standart model `deepseek-v4.1-flash`-dır. İstifadə üçün **External AI review** seçimini aktivləşdir.
+**AI settings** bölməsində OpenCode Go API key daxil edib **Save API key** bas. Go abunəliyi və `deepseek-v4.1-flash` modeli istifadə olunur. İstifadə üçün **External AI review** seçimini aktivləşdir.
 
 Açar lokal `data/ai-settings.json` faylında açıq mətnlə saxlanır.
 

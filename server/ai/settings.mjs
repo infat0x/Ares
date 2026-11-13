@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { mkdir, rename, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
-export const DEFAULT_AI_BASE_URL = 'https://opencode.ai/inference/openai/v1';
+export const DEFAULT_AI_BASE_URL = 'https://opencode.ai/inference/go/openai/v1';
 export const DEFAULT_AI_MODEL = 'deepseek-v4.1-flash';
 
 export class AiSettingsError extends Error {}

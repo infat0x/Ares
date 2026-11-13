@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { extractJsonObject } from './schema.mjs';
 
 export class AiProviderError extends Error {
@@ -42,14 +43,19 @@ export async function requestJsonCompletion({
     ]
   };
   if (aiConfig.jsonMode) body.response_format = { type: 'json_object' };
+  const headers = {
+    'content-type': 'application/json',
+    authorization: `Bearer ${aiConfig.apiKey}`
+  };
+  if (new URL(aiConfig.baseUrl).hostname === 'opencode.ai') {
+    headers['user-agent'] = 'ares/1.0.0';
+    headers['x-opencode-session'] = randomUUID();
+  }
 
   try {
     const response = await fetchImpl(url, {
       method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        authorization: `Bearer ${aiConfig.apiKey}`
-      },
+      headers,
       body: JSON.stringify(body),
       signal: controller.signal,
       redirect: 'error'
