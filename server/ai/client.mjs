@@ -50,6 +50,11 @@ export async function requestJsonCompletion({
   if (new URL(aiConfig.baseUrl).hostname === 'opencode.ai') {
     headers['user-agent'] = 'ares/1.0.0';
     headers['x-opencode-session'] = aiConfig.sessionId ?? randomUUID();
+    if (aiConfig.model.startsWith('deepseek-')) {
+      // Keep the bounded output budget available for the structured result.
+      body.thinking = { type: 'disabled' };
+      body.response_format = { type: 'json_object' };
+    }
   }
 
   try {
@@ -86,6 +91,9 @@ export async function requestJsonCompletion({
       throw new AiProviderError('AI provider returned a non-JSON envelope', { kind: 'provider' });
     }
     const content = data?.choices?.[0]?.message?.content;
+    if (data?.choices?.[0]?.finish_reason === 'length') {
+      throw new AiProviderError('AI output reached its token limit. Increase ARES_AI_MAX_TOKENS.', { kind: 'provider' });
+    }
     if (typeof content !== 'string' || !content.trim()) {
       throw new AiProviderError('AI provider returned an empty response', { kind: 'provider' });
     }

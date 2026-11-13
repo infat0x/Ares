@@ -11,7 +11,8 @@ Rules:
 3. Every finding you return MUST cite at least one supplied evidence id in evidenceRefs.
 4. Explain the practical risk in plain language, then give one concrete remediation step.
 5. If the evidence is weak or the local match is only "possible", say so explicitly in the risk text.
-6. Return JSON only, matching this contract:
+6. Return at most 3 prioritized findings. Keep summary under 200 characters, each risk under 350 characters and each remediation under 200 characters so the JSON fits the output budget.
+7. Return JSON only, matching this contract:
 {"summary":"<= 600 chars","findings":[{"title":"<= 160 chars","risk":"<= 900 chars","severity":"critical|high|medium|low|info","remediation":"<= 500 chars","confidence":"high|medium|low","evidenceRefs":["<supplied id>"]}]}
 Return an empty findings array when the evidence does not justify a finding.`;
 

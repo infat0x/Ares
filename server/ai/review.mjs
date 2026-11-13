@@ -17,6 +17,12 @@ export const AI_JOBS = [
     label: 'Security configuration review',
     task: 'Explain the risk of these configuration weaknesses. For each item, state the realistic attack path and give the single most effective remediation. Do not assume an operating system, domain or cloud context that is not supplied.',
     kinds: ['configuration']
+  },
+  {
+    id: 'validation',
+    label: 'Evidence validation and attack-path analysis',
+    task: 'Independently challenge the supplied observations. Identify unsupported assumptions and false-positive risks. Explain plausible attack paths only when supported by cited evidence and state the additional verification needed. Give prioritized remediations. With no findings, explain that coverage is insufficient to establish safety. Never invent a vulnerability.',
+    kinds: ['software', 'os-lifecycle', 'configuration']
   }
 ];
 
@@ -68,10 +74,11 @@ export function buildJobPayload(job, evidence) {
 
 async function runJob({ job, findings, aiConfig, identifiers, logger, fetchImpl }) {
   const startedAt = Date.now();
-  const evidence =
-    job.id === 'software' ? buildSoftwareEvidence(findings) : buildConfigurationEvidence(findings);
+  const evidence = job.id === 'validation'
+    ? [...buildSoftwareEvidence(findings), ...buildConfigurationEvidence(findings)]
+    : job.id === 'software' ? buildSoftwareEvidence(findings) : buildConfigurationEvidence(findings);
 
-  if (evidence.length === 0) {
+  if (evidence.length === 0 && job.id !== 'validation') {
     return {
       id: job.id,
       label: job.label,
@@ -224,7 +231,7 @@ export function mergeAiFindings(jobs, findings) {
  * Run both independent review jobs concurrently. Never throws: failures are
  * returned as per-job errors so the Windows assessment keeps its local result.
  */
-export async function runAiReview({ aiConfig, machine, findings, logger, fetchImpl = globalThis.fetch }) {
+export async function runAiReview({ aiConfig, machine, findings, logger, fetchImpl = globalThis.fetch, onJob = () => {} }) {
   const startedAt = Date.now();
   if (!aiConfig?.available) {
     return {
@@ -244,7 +251,12 @@ export async function runAiReview({ aiConfig, machine, findings, logger, fetchIm
     process.env.USER
   ].filter((value) => typeof value === 'string' && value.trim().length >= 3);
   const jobs = await Promise.all(
-    AI_JOBS.map((job) => runJob({ job, findings, aiConfig, identifiers, logger, fetchImpl }))
+    AI_JOBS.map(async (job) => {
+      onJob({ id: job.id, label: job.label, status: 'running' });
+      const result = await runJob({ job, findings, aiConfig, identifiers, logger, fetchImpl });
+      onJob(result);
+      return result;
+    })
   );
   const merge = mergeAiFindings(jobs, findings);
 

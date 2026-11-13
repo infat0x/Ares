@@ -95,6 +95,8 @@ export class AssessmentManager {
 
   create({ aiReview = false, vulnerabilityLookup = true, client = 'dashboard', target } = {}) {
     target = validateTarget(target);
+    aiReview = this.config.ai.available || aiReview;
+    if (target.mode === 'web' && this.config.ai.available) target.activeChecks = true;
     if (target.mode === 'web') vulnerabilityLookup = false;
     if (this.active >= this.config.maxConcurrentAssessments) {
       throw new AssessmentLimitError('Too many assessments are already running. Wait for one to finish.');
@@ -242,6 +244,7 @@ export class AssessmentManager {
         aiConfig: this.config.ai,
         machine: record.machine,
         findings: record.machine.findings,
+        onJob: (job) => this.#updateAiJob(record, job),
         logger: this.logger
       });
       record.ai = { ...result, requested: true, available: true, running: false };
@@ -398,6 +401,7 @@ export class AssessmentManager {
           aiConfig: this.config.ai,
           machine,
           findings: machine.findings,
+          onJob: (job) => this.#updateAiJob(record, job),
           logger: this.logger
         });
         record.ai = { ...result, requested: true, available: true };
@@ -437,6 +441,11 @@ export class AssessmentManager {
     });
 
     await this.persist(record);
+  }
+
+  #updateAiJob(record, job) {
+    record.ai.jobs = record.ai.jobs.map((existing) => existing.id === job.id ? job : existing);
+    this.emit(record, 'ai', { ...record.ai, machineId: record.machine.id });
   }
 
   async #runWeb(record) {

@@ -149,14 +149,16 @@ function applyMeta() {
   }
 
   const toggle = $('ai-toggle');
-  toggle.disabled = !ai.available;
-  if (!ai.available) toggle.checked = false;
+  toggle.disabled = true;
+  toggle.checked = Boolean(ai.available);
+  $('web-input-checks').checked = Boolean(ai.available) || $('web-input-checks').checked;
+  $('web-input-checks').disabled = Boolean(ai.available);
 
   $('ai-hint').textContent = ai.available
     ? 'Sends software/version facts and configuration observations. With web input probes enabled, AI chooses the next check from previous results. Target URLs, parameter names and response bodies stay local.'
     : 'No backend AI provider is configured. The local Windows assessment still runs normally.';
   $('ai-note').textContent = ai.available
-    ? 'Opt-in only: nothing is sent unless this box is checked before starting, or you press “Run AI review”.'
+    ? 'AI starts automatically with each assessment. Web input checks and three parallel analysis agents appear in the pipeline.'
     : 'Open AI settings below and save your OpenCode API key to enable AI review.';
 
   const sampleInfo = state.meta?.samples;
@@ -738,10 +740,29 @@ function renderProgress() {
     return;
   }
   panel.hidden = false;
-  const collectors =
+  const collectors = [ ...(
     state.assessment.collectors.length > 0
       ? state.assessment.collectors
-      : (state.meta?.collectors ?? []).map((collector) => ({ id: collector.id, label: collector.label, status: 'pending' }));
+      : (state.meta?.collectors ?? []).map((collector) => ({ id: collector.id, label: collector.label, status: 'pending' }))) ];
+  const addStage = (stage) => {
+    const status = stage.status ?? 'pending';
+    collectors.push({ ...stage, note: status,
+      status: ['complete', 'stopped', 'skipped', 'ok'].includes(status) ? 'ok'
+        : ['error', 'partial', 'limit-reached', 'failed'].includes(status) ? 'error'
+          : status === 'running' ? 'running' : 'pending' });
+  };
+  const planner = state.live?.web?.planner;
+  if (planner && planner.status !== 'not-requested') {
+    addStage({ id: 'web-planner', label: 'Adaptive web agent', status: planner.status });
+  }
+  if (state.assessment.aiRequested || state.assessment.ai?.requested) {
+    const jobs = state.assessment.ai?.jobs;
+    for (const stage of jobs?.length ? jobs : [
+      { id: 'software', label: 'Software & OS advisory review' },
+      { id: 'configuration', label: 'Security configuration review' },
+      { id: 'validation', label: 'Evidence validation and attack-path analysis' }
+    ]) addStage(stage);
+  }
 
   const finished = collectors.filter((collector) => collector.status === 'ok' || collector.status === 'error').length;
   const percent = collectors.length === 0 ? 0 : Math.round((finished / collectors.length) * 100);
@@ -766,12 +787,12 @@ function renderProgress() {
       el('span', { class: 'tile-label', text: collector.label ?? collector.id }),
       el('span', {
         class: 'tile-meta',
-        text:
+        text: collector.note ?? (
           collector.status === 'running'
             ? 'running…'
             : collector.status === 'pending'
               ? 'queued'
-              : `${collector.status === 'ok' ? 'done' : 'failed'} · ${formatDuration(collector.durationMs)}`
+              : `${collector.status === 'ok' ? 'done' : 'failed'} · ${formatDuration(collector.durationMs)}`)
       }),
       collector.error ? el('span', { class: 'tile-error', text: collector.error, attrs: { title: collector.error } }) : null
     ]);
@@ -779,7 +800,7 @@ function renderProgress() {
 
   panel.replaceChildren(
     el('div', { class: 'progress-head' }, [
-      el('span', { class: 'muted small', text: `${finished} of ${collectors.length} collectors finished` }),
+      el('span', { class: 'muted small', text: `${finished} of ${collectors.length} pipeline stages finished` }),
       el('span', { class: 'mono small', text: `${percent}%` })
     ]),
     bar,
@@ -861,6 +882,7 @@ function connectStream(assessmentId) {
         state.live.configChecks = checks;
       }
       if (web.status === 'running') setStatus('Web security checks are running...', 'running');
+      renderProgress();
       renderNotices();
     } catch {
       addNotice('warn', 'Stream warning', 'A web assessment event could not be parsed.', 'stream-web');
@@ -920,6 +942,7 @@ function connectStream(assessmentId) {
   source.addEventListener('ai', (event) => {
     try {
       state.assessment.ai = JSON.parse(event.data);
+      renderProgress();
       if (state.assessment.ai.status === 'running') {
         setStatus('AI review jobs are running concurrently…', 'running');
       }
@@ -1091,7 +1114,7 @@ async function startAssessment() {
     progress: null,
     ai: null,
     agent: null,
-    aiRequested: $('ai-toggle').checked,
+    aiRequested: Boolean(state.meta?.ai?.available),
     done: false,
     source: null,
     startedAt: new Date().toISOString()

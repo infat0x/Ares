@@ -26,11 +26,11 @@ Rejimi seç və **Start assessment** bas.
 
 ## AI ayarı
 
-**AI settings** bölməsində OpenCode Go API key daxil edib **Save API key** bas. Go abunəliyi və `deepseek-v4.1-flash` modeli istifadə olunur. İstifadə üçün **External AI review** seçimini aktivləşdir.
+**AI settings** bölməsində OpenCode Go API key daxil edib **Save API key** bas. Go abunəliyi və `deepseek-v4.1-flash` modeli istifadə olunur. Açar saxlanandan sonra **Start assessment** AI analizini avtomatik başladır.
 
 Açar lokal `data/ai-settings.json` faylında açıq mətnlə saxlanır.
 
-Web rejimində AI və input probes seçimlərini birlikdə aktivləşdirəndə AI agent əvvəlki müşahidələrə görə növbəti SQLi və ya HTML əksolunma yoxlamasını seçir. Seçilmiş URL-də maksimum 2 uyğun parametr və 4 AI qərarı ilə işləyir. Paneldə seçilən addımlar görünür. AI xətasında standart yoxlamalar davam edir. Hədəf URL-si, parametr adları və cavab mətni planlayıcıya göndərilmir.
+Web rejimində açar qurulubsa input probes avtomatik aktivləşir. AI agent əvvəlki müşahidələrə görə növbəti SQLi və ya HTML əksolunma yoxlamasını seçir. Seçilmiş URL-də maksimum 2 uyğun parametr və 4 AI qərarı ilə işləyir. Pipeline-da agent addımları və paralel proqram, konfiqurasiya və sübut analizi işlərinin vəziyyəti canlı görünür. AI xətasında standart yoxlamalar davam edir. Hədəf URL-si, parametr adları və cavab mətni planlayıcıya göndərilmir.
 
 ## Əsas qeydlər
 

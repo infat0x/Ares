@@ -75,7 +75,7 @@
           <label class="checkline">
             <input id="ai-toggle" type="checkbox" />
             <span>
-                <strong>External AI review and web agent (opt-in)</strong>
+                <strong>Automatic AI analysis and web agent</strong>
               <small id="ai-hint">Sends only software/version facts and configuration check details. Hostnames, IP addresses, usernames and logs stay on this machine.</small>
             </span>
           </label>
@@ -88,7 +88,7 @@
                 <span>OpenCode API key</span>
                 <input id="ai-api-key" type="password" minlength="8" maxlength="2048" autocomplete="new-password" required spellcheck="false" />
               </label>
-              <p class="muted small">Saved on this backend for future sessions. AI review requires opt-in for each assessment.</p>
+              <p class="muted small">After saving a key, Start assessment automatically runs AI analysis and web input checks.</p>
               <button id="ai-save-btn" class="btn" type="submit">Save API key</button>
               <p id="ai-settings-status" class="muted small" role="status" aria-live="polite"></p>
             </form>
