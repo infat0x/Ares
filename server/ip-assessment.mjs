@@ -24,7 +24,8 @@ export async function runIpAssessment({ host, onUpdate = () => {}, probe = probe
   const results = [];
   const pending = new Set();
   for (const port of IP_PORTS) {
-    const task = probe(host, port).then((result) => {
+    const task = Promise.resolve().then(() => probe(host, port))
+      .catch(() => ({ port, status: 'unknown' })).then((result) => {
       results.push(result);
       onUpdate({ completed: results.length, total: IP_PORTS.length });
     });

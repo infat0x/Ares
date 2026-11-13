@@ -1,4 +1,5 @@
 const SECRET_PATTERNS = [
+  /oc_sk_[A-Za-z0-9_-]{12,}/g,
   /sk-[A-Za-z0-9_-]{12,}/g,
   /Bearer\s+[A-Za-z0-9._~+/=-]{8,}/gi,
   /(?<=authorization["':\s]{1,6})[A-Za-z0-9._~+/=-]{16,}/gi

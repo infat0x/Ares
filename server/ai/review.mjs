@@ -135,7 +135,7 @@ async function runJob({ job, findings, aiConfig, identifiers, logger, fetchImpl,
       allowedEvidenceRefs: evidence.map((item) => item.id)
     });
     const items = (validation.value?.findings ?? []).map((item) => ({ ...item, job: job.id }));
-    const status = items.length > 0 || (validation.ok && validation.value) ? 'complete' : 'error';
+    const status = validation.ok && validation.value ? 'complete' : items.length > 0 ? 'partial' : 'error';
     return {
       id: job.id,
       label: job.label,

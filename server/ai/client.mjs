@@ -10,6 +10,28 @@ export class AiProviderError extends Error {
   }
 }
 
+async function readProviderResponse(response, maxBytes = 2_000_000) {
+  if (!response.body) return '';
+  const reader = response.body.getReader();
+  const chunks = [];
+  let bytes = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      bytes += value.byteLength;
+      if (bytes > maxBytes) {
+        await reader.cancel();
+        throw new AiProviderError('AI provider response was too large', { kind: 'provider' });
+      }
+      chunks.push(value);
+    }
+    return Buffer.concat(chunks).toString('utf8');
+  } finally {
+    reader.releaseLock();
+  }
+}
+
 /**
  * Call an OpenAI-compatible chat completion endpoint and return parsed JSON.
  * The API key is only ever placed in the Authorization header.
@@ -67,23 +89,15 @@ export async function requestJsonCompletion({
     });
 
     if (!response.ok) {
-      let detail = '';
-      try {
-        detail = (await response.text()).slice(0, 240);
-      } catch {
-        detail = '';
-      }
-      logger?.warn('ai provider rejected request', { status: response.status, detail });
+      await response.body?.cancel();
+      logger?.warn('ai provider rejected request', { status: response.status });
       throw new AiProviderError(`AI provider returned HTTP ${response.status}`, {
         kind: 'provider',
         status: response.status
       });
     }
 
-    const rawText = await response.text();
-    if (rawText.length > 2_000_000) {
-      throw new AiProviderError('AI provider response was too large', { kind: 'provider' });
-    }
+    const rawText = await readProviderResponse(response);
     let data;
     try {
       data = JSON.parse(rawText);

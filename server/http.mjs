@@ -315,13 +315,13 @@ export function createAresServer({ config, logger, advisories, manager, samples,
         recentAssessments.push(Date.now());
         logger.info('assessment started', {
           assessmentId: snapshot.id,
-          aiReview: Boolean(body.aiReview),
+          aiReview: snapshot.options.aiReview,
           aiAvailable: config.ai.available
         });
         sendJson(res, 201, {
           assessmentId: snapshot.id,
           eventsUrl: `/api/assessments/${snapshot.id}/events`,
-          aiRequested: Boolean(body.aiReview),
+          aiRequested: snapshot.options.aiReview,
           aiAvailable: config.ai.available
         });
         return;
