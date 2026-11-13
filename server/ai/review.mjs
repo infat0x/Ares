@@ -40,7 +40,8 @@ export function buildPortEvidence(endpoints = []) {
     state: endpoint.state ?? 'unknown',
     process: endpoint.process?.split(/[\\/]/).pop() || null,
     service: endpoint.service ?? null,
-    binding: endpoint.loopbackOnly ? 'loopback' : endpoint.anyAddress ? 'all-interfaces' : 'specific-interface'
+    binding: endpoint.remote ? 'remote-reachable-binding-unknown'
+      : endpoint.loopbackOnly ? 'loopback' : endpoint.anyAddress ? 'all-interfaces' : 'specific-interface'
   }));
 }
 

@@ -50,6 +50,7 @@
               <option value="local">Local machine</option>
               <option value="ssh">Remote Linux server (SSH)</option>
               <option value="web">Web application</option>
+              <option value="ip">IP address</option>
             </select>
           </label>
           <fieldset id="ssh-fields" hidden>
@@ -57,7 +58,13 @@
             <label class="field"><span>IP address or hostname</span><input id="ssh-host" type="text" autocomplete="off" /></label>
             <label class="field"><span>Port</span><input id="ssh-port" type="number" min="1" max="65535" value="22" /></label>
             <label class="field"><span>Username</span><input id="ssh-username" type="text" autocomplete="off" /></label>
-            <p class="muted small">Uses the backend's OpenSSH keys or SSH agent and verified known_hosts entry. Remote requirements: Linux, Python 3.10+, ip and ss.</p>
+            <label class="field"><span>Password (optional)</span><input id="ssh-password" type="password" autocomplete="new-password" maxlength="1024" /></label>
+            <p class="muted small">Enter a password or leave it empty to use SSH keys or an agent. The host must have a verified known_hosts entry. Remote requirements: Linux, Python 3.10+, ip and ss. The password is used in memory for this assessment.</p>
+          </fieldset>
+          <fieldset id="ip-fields" hidden>
+            <legend>IP target</legend>
+            <label class="field"><span>IPv4 or IPv6 address</span><input id="ip-host" type="text" autocomplete="off" placeholder="192.168.1.10" /></label>
+            <p class="muted small">Checks 32 common TCP ports on an authorized IP, with up to two concurrent connections and a 500 ms interval. AI analyzes reachable ports. Service identities remain unverified.</p>
           </fieldset>
           <fieldset id="web-fields" hidden>
             <legend>Web application</legend>

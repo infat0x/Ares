@@ -4,7 +4,7 @@ export class TargetError extends Error {}
 
 export function validateTarget(value = { mode: 'local' }) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TargetError('target must be an object');
-  if (Object.keys(value).some((key) => !['mode', 'host', 'port', 'username', 'url', 'activeChecks'].includes(key))) {
+  if (Object.keys(value).some((key) => !['mode', 'host', 'port', 'username', 'password', 'url', 'activeChecks'].includes(key))) {
     throw new TargetError('Unknown target field');
   }
   if (value.mode === 'local') {
@@ -26,8 +26,14 @@ export function validateTarget(value = { mode: 'local' }) {
     url.hash = '';
     return { mode: 'web', url: url.href, activeChecks: value.activeChecks ?? false };
   }
-  if (value.mode !== 'ssh') throw new TargetError('target.mode must be local, ssh or web');
-  if (Object.keys(value).some((key) => !['mode', 'host', 'port', 'username'].includes(key))) throw new TargetError('Unknown SSH target field');
+  if (value.mode === 'ip') {
+    if (Object.keys(value).some((key) => !['mode', 'host'].includes(key)) || typeof value.host !== 'string' || !isIP(value.host)) {
+      throw new TargetError('IP target requires a single IPv4 or IPv6 address');
+    }
+    return { mode: 'ip', host: value.host };
+  }
+  if (value.mode !== 'ssh') throw new TargetError('target.mode must be local, ssh, web or ip');
+  if (Object.keys(value).some((key) => !['mode', 'host', 'port', 'username', 'password'].includes(key))) throw new TargetError('Unknown SSH target field');
   const { host, username, port = 22 } = value;
   if (typeof host !== 'string' || host.length > 253 ||
       !(isIP(host) || /^(?=.{1,253}$)[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$/i.test(host))) {
@@ -37,11 +43,16 @@ export function validateTarget(value = { mode: 'local' }) {
     throw new TargetError('Invalid SSH username');
   }
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new TargetError('SSH port must be between 1 and 65535');
-  return { mode: 'ssh', host, port, username };
+  const password = value.password ?? '';
+  if (typeof password !== 'string' || password.length > 1024 || /[\r\n\0]/.test(password)) throw new TargetError('Invalid SSH password');
+  const target = { mode: 'ssh', host, port, username };
+  Object.defineProperty(target, 'password', { value: password || undefined, writable: true });
+  return target;
 }
 
 export function sshArgs(target, collectorId) {
-  return ['-T', '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=yes',
+  return ['-T', '-o', `BatchMode=${target.password ? 'no' : 'yes'}`, '-o', 'StrictHostKeyChecking=yes',
+    ...(target.password ? ['-o', 'PreferredAuthentications=password', '-o', 'NumberOfPasswordPrompts=1'] : []),
     '-o', 'ConnectTimeout=10', '-o', 'ForwardAgent=no', '-o', 'ClearAllForwardings=yes',
     '-p', String(target.port), '-l', target.username, '--', target.host, `python3 - ${collectorId}`];
 }

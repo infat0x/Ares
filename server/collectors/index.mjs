@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 import { readFile } from 'node:fs/promises';
 import { sshArgs } from '../target.mjs';
+import { sshPasswordEnvironment } from '../util/ssh.mjs';
 import { runCommand } from '../util/exec.mjs';
 import { asArray } from '../machine.mjs';
 
@@ -299,10 +300,12 @@ export async function runCollector(collector, { scriptDir, timeoutMs, logger, ta
   const result = await runCommand({
     file: target.mode === 'ssh' ? 'ssh' : linux ? 'python3' : 'powershell.exe',
     args: target.mode === 'ssh' ? sshArgs(target, collector.id) : linux ? ['-', collector.id] : args,
+    env: target.mode === 'ssh' ? await sshPasswordEnvironment(target.password) : undefined,
     input: linux ? await readFile(new URL('./linux.py', import.meta.url), 'utf8') : undefined,
     timeoutMs: effectiveTimeout,
     maxOutputBytes: 6 * 1024 * 1024
   });
+  if (target.password) result.stderr = result.stderr.split(target.password).join('[redacted]');
 
   if (result.timedOut) {
     logger?.warn('collector timed out', { collector: collector.id, timeoutMs: effectiveTimeout });

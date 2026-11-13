@@ -204,7 +204,8 @@ function wireEvents() {
   $('target-mode').addEventListener('change', () => {
     $('ssh-fields').hidden = $('target-mode').value !== 'ssh';
     $('web-fields').hidden = $('target-mode').value !== 'web';
-    $('vulnerability-option').hidden = $('target-mode').value === 'web';
+    $('ip-fields').hidden = $('target-mode').value !== 'ip';
+    $('vulnerability-option').hidden = ['web', 'ip'].includes($('target-mode').value);
   });
   $('start-btn').addEventListener('click', startAssessment);
   $('ai-run-btn').addEventListener('click', runAiReview);
@@ -1150,11 +1151,13 @@ async function startAssessment() {
 
   try {
     let target = $('target-mode').value === 'ssh'
-      ? { mode: 'ssh', host: $('ssh-host').value.trim(), port: Number($('ssh-port').value), username: $('ssh-username').value.trim() }
+      ? { mode: 'ssh', host: $('ssh-host').value.trim(), port: Number($('ssh-port').value), username: $('ssh-username').value.trim(), password: $('ssh-password').value }
       : { mode: 'local' };
     if ($('target-mode').value === 'web') {
       target = { mode: 'web', url: $('web-url').value.trim(), activeChecks: $('web-input-checks').checked };
     }
+    if ($('target-mode').value === 'ip') target = { mode: 'ip', host: $('ip-host').value.trim() };
+    $('ssh-password').value = '';
     const response = await apiFetch('/api/assessments', {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-ares-request': 'dashboard' },

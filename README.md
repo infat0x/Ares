@@ -21,7 +21,8 @@ Uzaq serverin panelinə öz kompüterindən qoşulmaq üçün `ssh -L 4517:127.0
 Rejimi seç və **Start assessment** bas.
 
 - **Local machine** - Windows və Linux portları, proqram versiyaları və təhlükəsizlik ayarları.
-- **Remote Linux server (SSH)** - IP, port və username daxil et. SSH açarı və ya agent tələb olunur. Serverə əvvəl terminaldan qoşulub host fingerprint-i yoxla. Serverdə Python 3.10+, `ip`, `ss` və `dpkg-query`, `rpm` və ya `apk` olmalıdır.
+- **Remote Linux server (SSH)** - IP, port və username daxil et. Parol daxil et və ya boş saxlayıb SSH açarı/agent istifadə et. Parol hesabatda saxlanmır. Serverə əvvəl terminaldan qoşulub host fingerprint-i yoxla. Serverdə Python 3.10+, `ip`, `ss` və `dpkg-query`, `rpm` və ya `apk` olmalıdır.
+- **IP address** - tək IPv4/IPv6 ünvanında 32 ümumi TCP portu yoxlanır. Maksimum 2 paralel qoşulma və 500 ms fasilə istifadə olunur. Açıq portlar AI analizinə daxil edilir. Servis adı və versiyası təsdiqlənmiş sayılmır.
 - **Web application** - icazəli tətbiqin URL-ni daxil et. TLS, cookie, CORS, təhlükəsizlik başlıqları və xəta məlumatları yoxlanır. **SQLi and HTML reflection probes** seçimi URL parametrlərində SQL xəta, true/false SQLi və HTML əksolunma siqnallarını yoxlayır. Parametrli URL nümunəsi `http://lab.example/product?id=1`.
 
 ## AI ayarı

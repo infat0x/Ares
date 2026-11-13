@@ -8,6 +8,7 @@ import { runAiReview, AI_JOBS } from './ai/review.mjs';
 import { validateTarget } from './target.mjs';
 import { OsvClient, runVulnerabilityAgent } from './vulnerability-agent.mjs';
 import { runWebAssessment } from './web-assessment.mjs';
+import { runIpAssessment } from './ip-assessment.mjs';
 
 export class AssessmentLimitError extends Error {
   constructor(message) {
@@ -97,7 +98,7 @@ export class AssessmentManager {
     target = validateTarget(target);
     aiReview = this.config.ai.available || aiReview;
     if (target.mode === 'web' && this.config.ai.available) target.activeChecks = true;
-    if (target.mode === 'web') vulnerabilityLookup = false;
+    if (['web', 'ip'].includes(target.mode)) vulnerabilityLookup = false;
     if (this.active >= this.config.maxConcurrentAssessments) {
       throw new AssessmentLimitError('Too many assessments are already running. Wait for one to finish.');
     }
@@ -136,6 +137,15 @@ export class AssessmentManager {
     };
     record.machine.target = target;
     record.machine.platform = target.mode === 'ssh' || process.platform === 'linux' ? 'linux' : 'windows';
+    if (target.mode === 'ip') {
+      record.machine.platform = 'network';
+      record.machine.id = `ip-${id.slice(0, 8)}`;
+      record.machine.hostname = target.host;
+      record.machine.ips = [target.host];
+      record.machine.primaryIp = target.host;
+      record.machine.machineType = 'IP target';
+      record.collectors = [{ id: 'ports', label: 'IP TCP port checks', status: 'pending', durationMs: null, error: null }];
+    }
     if (target.mode === 'web') {
       record.machine.platform = 'web';
       record.machine.id = `web-${id.slice(0, 8)}`;
@@ -162,6 +172,7 @@ export class AssessmentManager {
         this.emit(record, 'done', { status: 'failed', totals: record.machine.totals, durationMs: 0 });
       })
       .finally(() => {
+        if (target.mode === 'ssh') target.password = undefined;
         this.active = Math.max(0, this.active - 1);
       });
 
@@ -284,8 +295,9 @@ export class AssessmentManager {
     });
 
     const completedIds = new Set();
-    const collectors = record.options.target.mode === 'web' ? [] : COLLECTORS;
+    const collectors = ['web', 'ip'].includes(record.options.target.mode) ? [] : COLLECTORS;
     if (record.options.target.mode === 'web') await this.#runWeb(record);
+    if (record.options.target.mode === 'ip') await this.#runIp(record);
 
     await Promise.all(
       collectors.map(async (collector) => {
@@ -381,6 +393,7 @@ export class AssessmentManager {
     const failedCount = machine.errors.length;
     machine.status = failedCount === 0 ? 'complete' : failedCount >= record.collectors.length ? 'failed' : 'partial';
     if (machine.status === 'complete' && machine.web?.status === 'partial') machine.status = 'partial';
+    if (machine.status === 'complete' && machine.network?.status === 'partial') machine.status = 'partial';
     if (machine.status === 'complete' && ['partial', 'error'].includes(record.agent.status)) machine.status = 'partial';
     machine.timestamps.completedAt = this.now().toISOString();
     record.status = machine.status;
@@ -441,6 +454,24 @@ export class AssessmentManager {
     });
 
     await this.persist(record);
+  }
+
+  async #runIp(record) {
+    const startedAt = Date.now();
+    const entry = record.collectors[0];
+    entry.status = 'running';
+    this.emit(record, 'collector', { collector: entry.id, label: entry.label, status: 'running' });
+    const result = await runIpAssessment({ host: record.options.target.host,
+      onUpdate: ({ completed, total }) => this.emit(record, 'progress', { phase: 'ip', completed, total, running: ['ports'] }) });
+    record.machine.endpoints = result.endpoints;
+    record.machine.network = { status: result.status, testedPorts: result.testedPorts, unknown: result.unknown };
+    record.machine.warnings.push({ source: 'IP coverage', message: `${result.testedPorts.length} selected TCP ports checked. ${result.unknown} timed out or could not be reached. Service names and versions require further verification.` });
+    entry.status = 'ok';
+    entry.durationMs = Date.now() - startedAt;
+    this.emit(record, 'collector', { collector: entry.id, label: entry.label, status: 'ok', durationMs: entry.durationMs,
+      data: { endpoints: result.endpoints } });
+    this.emit(record, 'machine', { machine: record.machine });
+    this.#refreshFindings(record);
   }
 
   #updateAiJob(record, job) {
