@@ -1,0 +1,15 @@
+{
+  "name": "ares",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Ares - system and web security dashboard for CyberWar Attack-Defense CTF",
+  "engines": {
+    "node": ">=20.11"
+  },
+  "scripts": {
+    "deploy": "node scripts/deploy.mjs",
+    "start": "node server/index.mjs",
+    "dev": "node --watch server/index.mjs"
+  }
+}

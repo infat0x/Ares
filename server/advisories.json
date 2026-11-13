@@ -1,0 +1,319 @@
+{
+  "schemaVersion": 1,
+  "provenance": {
+    "snapshot": "2026-11-01",
+    "maintainer": "Ares offline advisory snapshot",
+    "sources": [
+      {
+        "id": "NVD",
+        "name": "NIST National Vulnerability Database",
+        "url": "https://nvd.nist.gov/",
+        "trust": "primary"
+      },
+      {
+        "id": "MSRC",
+        "name": "Microsoft Security Response Center",
+        "url": "https://msrc.microsoft.com/update-guide",
+        "trust": "primary"
+      },
+      {
+        "id": "MS-LIFECYCLE",
+        "name": "Microsoft Lifecycle Policy",
+        "url": "https://learn.microsoft.com/lifecycle/",
+        "trust": "primary"
+      },
+      {
+        "id": "VENDOR",
+        "name": "Vendor security advisories",
+        "url": "https://cve.mitre.org/",
+        "trust": "primary"
+      }
+    ],
+    "notes": [
+      "This is a deliberately small, curated offline snapshot used for local, read-only assessment.",
+      "Version comparisons use the installed version string reported by the Windows uninstall registry.",
+      "An entry is reported as 'possible' when the evidence needed to prove the match is missing (for example no installed version, or a version parsed from a display name).",
+      "Refresh this file from the listed sources before relying on it. See README.md."
+    ]
+  },
+  "software": [
+    {
+      "id": "ADV-SW-7ZIP-2411477",
+      "cve": "CVE-2024-11477",
+      "title": "7-Zip Zstandard decompression out-of-bounds write",
+      "product": "7-Zip",
+      "aliases": ["7-zip", "7zip"],
+      "vendor": "Igor Pavlov",
+      "severity": "high",
+      "range": { "lt": "24.07" },
+      "fixedVersion": "24.07",
+      "source": {
+        "name": "NIST NVD",
+        "url": "https://nvd.nist.gov/vuln/detail/CVE-2024-11477"
+      },
+      "published": "2024-11-21",
+      "fix": "Update 7-Zip to 24.07 or later.",
+      "notes": "Advisory states the issue is fixed in 24.07. Exploitation requires opening a specially crafted Zstandard archive."
+    },
+    {
+      "id": "ADV-SW-WINRAR-2338831",
+      "cve": "CVE-2023-38831",
+      "title": "WinRAR spoofed file-extension code execution",
+      "product": "WinRAR",
+      "aliases": ["winrar", "winrar archiver"],
+      "vendor": "RARLAB",
+      "severity": "high",
+      "range": { "lt": "6.23" },
+      "fixedVersion": "6.23",
+      "source": {
+        "name": "NIST NVD",
+        "url": "https://nvd.nist.gov/vuln/detail/CVE-2023-38831"
+      },
+      "published": "2023-08-24",
+      "fix": "Update WinRAR to 6.23 or later.",
+      "notes": "A crafted archive can place a file with a matching name next to the opened document and execute it. User interaction is required."
+    },
+    {
+      "id": "ADV-SW-OPENSSL-2014-0160",
+      "cve": "CVE-2014-0160",
+      "title": "OpenSSL Heartbeat information disclosure (Heartbleed)",
+      "product": "OpenSSL",
+      "aliases": ["openssl", "openssl toolkit"],
+      "vendor": "OpenSSL Software Foundation",
+      "severity": "high",
+      "range": { "gte": "1.0.1", "lt": "1.0.1g" },
+      "fixedVersion": "1.0.1g",
+      "source": {
+        "name": "NIST NVD",
+        "url": "https://nvd.nist.gov/vuln/detail/CVE-2014-0160"
+      },
+      "published": "2014-04-07",
+      "fix": "Update OpenSSL to 1.0.1g / 1.0.2 or later, then rotate affected keys and certificates.",
+      "notes": "Affects OpenSSL 1.0.1 through 1.0.1f. This is an old library version; verify that no shipped application bundles a vulnerable copy."
+    },
+    {
+      "id": "ADV-SW-LOG4J-2021-44228",
+      "cve": "CVE-2021-44228",
+      "title": "Apache Log4j 2 remote code execution (Log4Shell)",
+      "product": "Apache Log4j",
+      "aliases": ["log4j", "log4j-core", "apache log4j"],
+      "vendor": "Apache Software Foundation",
+      "severity": "critical",
+      "range": { "gte": "2.0", "lt": "2.15.0" },
+      "fixedVersion": "2.15.0",
+      "source": {
+        "name": "NIST NVD",
+        "url": "https://nvd.nist.gov/vuln/detail/CVE-2021-44228"
+      },
+      "published": "2021-12-10",
+      "fix": "Update Log4j to 2.17.1 or later (minimum 2.15.0), or remove the JNDI lookup feature as documented by Apache.",
+      "notes": "JNDI features used in configuration, log messages and parameters can be abused for remote code execution. Beta builds before 2.0 are not covered by this range."
+    },
+    {
+      "id": "ADV-SW-PUTTY-2024-31497",
+      "cve": "CVE-2024-31497",
+      "title": "PuTTY NIST P-521 private key recovery",
+      "product": "PuTTY",
+      "aliases": ["putty", "putty release"],
+      "vendor": "Simon Tatham",
+      "severity": "high",
+      "range": { "gte": "0.68", "lt": "0.81" },
+      "fixedVersion": "0.81",
+      "source": {
+        "name": "NIST NVD",
+        "url": "https://nvd.nist.gov/vuln/detail/CVE-2024-31497"
+      },
+      "published": "2024-04-16",
+      "fix": "Update PuTTY to 0.81 or later and regenerate NIST P-521 keys used with affected versions.",
+      "notes": "Affects PuTTY 0.68 through 0.80. Only NIST P-521 keys are affected."
+    },
+    {
+      "id": "ADV-SW-GIT-2024-32002",
+      "cve": "CVE-2024-32002",
+      "title": "Git for Windows recursive clone remote code execution",
+      "product": "Git",
+      "aliases": ["git", "git for windows", "git version"],
+      "vendor": "Git project",
+      "severity": "high",
+      "range": { "lt": "2.45.1" },
+      "fixedVersion": "2.45.1",
+      "source": {
+        "name": "NIST NVD",
+        "url": "https://nvd.nist.gov/vuln/detail/CVE-2024-32002"
+      },
+      "published": "2024-05-14",
+      "fix": "Update Git for Windows to 2.45.1 or later.",
+      "notes": "A malicious repository can abuse submodules and symlinks during a recursive clone. Exploitation requires cloning an untrusted repository."
+    },
+    {
+      "id": "ADV-SW-CURL-2023-38545",
+      "cve": "CVE-2023-38545",
+      "title": "curl SOCKS5 hostname heap buffer overflow",
+      "product": "curl",
+      "aliases": ["curl", "curl for windows", "libcurl"],
+      "vendor": "curl project",
+      "severity": "high",
+      "range": { "gte": "7.69.0", "lt": "8.4.0" },
+      "fixedVersion": "8.4.0",
+      "source": {
+        "name": "NIST NVD",
+        "url": "https://nvd.nist.gov/vuln/detail/CVE-2023-38545"
+      },
+      "published": "2023-10-18",
+      "fix": "Update curl to 8.4.0 or later.",
+      "notes": "Requires a very long hostname and a SOCKS5 proxy handshake. Installed application versions can bundle their own libcurl."
+    }
+  ],
+  "lifecycle": [
+    {
+      "id": "LC-WIN10",
+      "family": "Windows 10",
+      "captionMatch": "Windows 10",
+      "buildMin": 10240,
+      "buildMax": 19045,
+      "supportEnd": "2025-10-14",
+      "severity": "medium",
+      "source": {
+        "name": "Microsoft Lifecycle Policy",
+        "url": "https://learn.microsoft.com/lifecycle/products/windows-10-home-and-pro"
+      },
+      "fix": "Migrate to a supported Windows release or enroll eligible devices in the Windows 10 consumer Extended Security Updates programme.",
+      "notes": "Windows 10 22H2 reached end of servicing on 2025-10-14. Earlier feature updates stopped receiving fixes sooner; verify the exact servicing state for this build."
+    },
+    {
+      "id": "LC-WIN81",
+      "family": "Windows 8.1",
+      "captionMatch": "Windows 8.1",
+      "buildMin": 9600,
+      "buildMax": 9600,
+      "supportEnd": "2023-01-10",
+      "severity": "critical",
+      "source": {
+        "name": "Microsoft Lifecycle Policy",
+        "url": "https://learn.microsoft.com/lifecycle/products/windows-81"
+      },
+      "fix": "Replace or upgrade the operating system; no security updates are produced for Windows 8.1.",
+      "notes": "Windows 8.1 exited support on 2023-01-10."
+    },
+    {
+      "id": "LC-WIN7",
+      "family": "Windows 7",
+      "captionMatch": "Windows 7",
+      "buildMin": 7600,
+      "buildMax": 7601,
+      "supportEnd": "2020-01-14",
+      "severity": "critical",
+      "source": {
+        "name": "Microsoft Lifecycle Policy",
+        "url": "https://learn.microsoft.com/lifecycle/products/windows-7"
+      },
+      "fix": "Replace or upgrade the operating system; extended security updates ended in 2023.",
+      "notes": "Windows 7 exited support on 2020-01-14."
+    },
+    {
+      "id": "LC-SRV2012R2",
+      "family": "Windows Server 2012 R2",
+      "captionMatch": "Windows Server 2012 R2",
+      "buildMin": 9600,
+      "buildMax": 9600,
+      "supportEnd": "2023-10-10",
+      "severity": "high",
+      "source": {
+        "name": "Microsoft Lifecycle Policy",
+        "url": "https://learn.microsoft.com/lifecycle/products/windows-server-2012-r2"
+      },
+      "fix": "Migrate to Windows Server 2016 or later, or buy Extended Security Updates.",
+      "notes": "Windows Server 2012 R2 exited support on 2023-10-10."
+    },
+    {
+      "id": "LC-SRV2012",
+      "family": "Windows Server 2012",
+      "captionMatch": "Windows Server 2012",
+      "buildMin": 9200,
+      "buildMax": 9200,
+      "supportEnd": "2023-10-10",
+      "severity": "high",
+      "source": {
+        "name": "Microsoft Lifecycle Policy",
+        "url": "https://learn.microsoft.com/lifecycle/products/windows-server-2012"
+      },
+      "fix": "Migrate to Windows Server 2016 or later, or buy Extended Security Updates.",
+      "notes": "Windows Server 2012 exited support on 2023-10-10."
+    },
+    {
+      "id": "LC-WIN11-21H2",
+      "family": "Windows 11 21H2",
+      "captionMatch": "Windows 11",
+      "buildMin": 22000,
+      "buildMax": 22000,
+      "supportEnd": "2023-10-10",
+      "severity": "high",
+      "source": {
+        "name": "Microsoft Lifecycle Policy",
+        "url": "https://learn.microsoft.com/lifecycle/products/windows-11-home-and-pro"
+      },
+      "fix": "Update to a supported Windows 11 feature update.",
+      "notes": "Windows 11 21H2 reached end of servicing on 2023-10-10."
+    },
+    {
+      "id": "LC-WIN11-22H2",
+      "family": "Windows 11 22H2",
+      "captionMatch": "Windows 11",
+      "buildMin": 22621,
+      "buildMax": 22621,
+      "supportEnd": "2025-10-14",
+      "severity": "medium",
+      "source": {
+        "name": "Microsoft Lifecycle Policy",
+        "url": "https://learn.microsoft.com/lifecycle/products/windows-11-home-and-pro"
+      },
+      "fix": "Update to a supported Windows 11 feature update.",
+      "notes": "Windows 11 22H2 Home/Pro reached end of servicing on 2025-10-14."
+    },
+    {
+      "id": "LC-WIN11-23H2",
+      "family": "Windows 11 23H2",
+      "captionMatch": "Windows 11",
+      "buildMin": 22631,
+      "buildMax": 22631,
+      "supportEnd": { "consumer": "2025-11-11", "enterprise": "2026-11-10" },
+      "severity": "medium",
+      "source": {
+        "name": "Microsoft Lifecycle Policy",
+        "url": "https://learn.microsoft.com/lifecycle/products/windows-11-enterprise-and-education"
+      },
+      "fix": "Update to a supported Windows 11 feature update.",
+      "notes": "Windows 11 23H2 Home/Pro ended on 2025-11-11; Enterprise/Education ends 2026-11-10."
+    },
+    {
+      "id": "LC-WIN11-24H2",
+      "family": "Windows 11 24H2",
+      "captionMatch": "Windows 11",
+      "buildMin": 26100,
+      "buildMax": 26100,
+      "supportEnd": { "consumer": "2026-10-13", "enterprise": "2027-10-12" },
+      "severity": "medium",
+      "source": {
+        "name": "Microsoft Lifecycle Policy",
+        "url": "https://learn.microsoft.com/lifecycle/products/windows-11-enterprise-and-education"
+      },
+      "fix": "Update to a supported Windows 11 feature update.",
+      "notes": "Windows 11 24H2 Home/Pro ends 2026-10-13; Enterprise/Education ends 2027-10-12."
+    },
+    {
+      "id": "LC-WIN11-25H2",
+      "family": "Windows 11 25H2",
+      "captionMatch": "Windows 11",
+      "buildMin": 26200,
+      "buildMax": 26200,
+      "supportEnd": { "consumer": "2027-10-12", "enterprise": "2028-10-10" },
+      "severity": "medium",
+      "source": {
+        "name": "Microsoft Lifecycle Policy",
+        "url": "https://learn.microsoft.com/lifecycle/products/windows-11-enterprise-and-education"
+      },
+      "fix": "Update to a supported Windows 11 feature update.",
+      "notes": "Windows 11 25H2 Home/Pro ends 2027-10-12; Enterprise/Education ends 2028-10-10."
+    }
+  ]
+}

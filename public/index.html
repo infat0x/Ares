@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ares - Server Assessment</title>
+    <meta name="color-scheme" content="dark" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <div class="brand">
+          <svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+            <rect width="64" height="64" rx="14" fill="#0b1220" />
+            <path d="M32 9l17 9v14c0 12-7.6 19.6-17 23-9.4-3.4-17-11-17-23V18l17-9z" fill="none" stroke="#38bdf8" stroke-width="3" />
+            <path d="M23 40l9-21 9 21M26.6 33h10.8" fill="none" stroke="#f97316" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          <div class="brand-text">
+            <h1>Ares</h1>
+            <p>CyberWar Attack-Defense CTF · Phase 1</p>
+          </div>
+        </div>
+        <div class="topbar-actions">
+          <span id="ai-chip" class="chip chip-muted">AI review: checking…</span>
+          <button id="start-btn" class="btn btn-primary" type="button">Start assessment</button>
+          <button id="logout-btn" class="btn" type="button">Sign out</button>
+        </div>
+      </header>
+
+      <section class="panel briefing" aria-labelledby="briefing-title">
+        <div class="briefing-copy">
+          <h2 id="briefing-title">Local or SSH server assessment</h2>
+          <p>
+            Read-only collectors inspect the selected machine: host identity, listening TCP/UDP endpoints,
+            installed software, updates and security configuration.
+            Results stream into the list below as each collector finishes.
+          </p>
+          <ul class="facts">
+            <li>Backend bound to <code>127.0.0.1</code> only</li>
+            <li>Fixed collector set — no arbitrary command execution</li>
+            <li>Partial results survive a collector failure or timeout</li>
+          </ul>
+        </div>
+        <div class="optin">
+          <label class="field">
+            <span>Assessment target</span>
+            <select id="target-mode">
+              <option value="local">Local machine</option>
+              <option value="ssh">Remote Linux server (SSH)</option>
+              <option value="web">Web application</option>
+            </select>
+          </label>
+          <fieldset id="ssh-fields" hidden>
+            <legend>SSH connection</legend>
+            <label class="field"><span>IP address or hostname</span><input id="ssh-host" type="text" autocomplete="off" /></label>
+            <label class="field"><span>Port</span><input id="ssh-port" type="number" min="1" max="65535" value="22" /></label>
+            <label class="field"><span>Username</span><input id="ssh-username" type="text" autocomplete="off" /></label>
+            <p class="muted small">Uses the backend's OpenSSH keys or SSH agent and verified known_hosts entry. Remote requirements: Linux, Python 3.10+, ip and ss.</p>
+          </fieldset>
+          <fieldset id="web-fields" hidden>
+            <legend>Web application</legend>
+            <label class="field"><span>Target URL</span><input id="web-url" type="url" placeholder="https://your-app.example/search?q=test" autocomplete="off" /></label>
+            <label class="checkline"><input id="web-input-checks" type="checkbox" /><span>SQLi and HTML reflection probes for existing query parameters</span></label>
+            <p class="muted small">Use an application you own or are authorized to assess. Up to 10 GET requests, spaced at least one second apart. Coverage stays within the selected origin and a same-host HTTPS upgrade.</p>
+          </fieldset>
+          <label class="checkline" id="vulnerability-option">
+            <input id="vulnerability-toggle" type="checkbox" checked />
+            <span>
+              <strong>Live CVE agent (OSV)</strong>
+              <small>Checks Debian, Ubuntu and Alpine source packages. Sends package names, versions and distribution to OSV. Uses a 24-hour cache and up to 24 paced requests per assessment.</small>
+            </span>
+          </label>
+          <label class="checkline">
+            <input id="ai-toggle" type="checkbox" />
+            <span>
+              <strong>External AI review (opt-in)</strong>
+              <small id="ai-hint">Sends only software/version facts and configuration check details. Hostnames, IP addresses, usernames and logs stay on this machine.</small>
+            </span>
+          </label>
+          <p id="ai-note" class="muted small"></p>
+          <details class="ai-settings">
+            <summary>AI settings</summary>
+            <p class="muted small">OpenCode - DeepSeek V4.1 Flash</p>
+            <form id="ai-settings-form">
+              <label class="field">
+                <span>OpenCode API key</span>
+                <input id="ai-api-key" type="password" minlength="8" maxlength="2048" autocomplete="new-password" required spellcheck="false" />
+              </label>
+              <p class="muted small">Saved on this backend for future sessions. AI review requires opt-in for each assessment.</p>
+              <button id="ai-save-btn" class="btn" type="submit">Save API key</button>
+              <p id="ai-settings-status" class="muted small" role="status" aria-live="polite"></p>
+            </form>
+          </details>
+        </div>
+      </section>
+
+      <section class="panel live-panel" aria-labelledby="assessment-title">
+        <div class="live-head">
+          <div>
+            <h2 id="assessment-title">Assessment</h2>
+            <p id="assessment-status" class="status-line" aria-live="polite">Ready. Start an assessment to inspect this machine.</p>
+          </div>
+          <div class="live-actions">
+            <button id="ai-run-btn" class="btn" type="button" hidden>Run AI review</button>
+            <span id="assessment-time" class="muted small"></span>
+          </div>
+        </div>
+        <div id="progress" class="progress" hidden></div>
+        <div id="notices" class="notices" aria-live="polite"></div>
+      </section>
+
+      <section class="panel list-panel" aria-labelledby="machines-title">
+        <div class="list-head">
+          <div>
+            <h2 id="machines-title">Machines <span id="count" class="count"></span></h2>
+            <p class="muted small">Collapsed rows show hostname, IP, machine type and status. Expand for ports, processes, software, findings and timestamps.</p>
+          </div>
+          <label class="switch">
+            <input id="show-samples" type="checkbox" checked />
+            <span>Show sample data</span>
+          </label>
+        </div>
+
+        <div id="stats" class="stats" aria-label="Filtered severity summary"></div>
+
+        <div class="filters">
+          <label class="field">
+            <span>IP address</span>
+            <input id="filter-ip" type="search" placeholder="e.g. 10.42.0.15" autocomplete="off" spellcheck="false" />
+          </label>
+          <label class="field">
+            <span>Port</span>
+            <input id="filter-port" type="number" min="1" max="65535" placeholder="e.g. 3389" autocomplete="off" />
+          </label>
+          <label class="field">
+            <span>Process</span>
+            <input id="filter-process" type="search" placeholder="e.g. svchost" autocomplete="off" spellcheck="false" />
+          </label>
+          <fieldset class="severity-filter">
+            <legend>Finding severity</legend>
+            <label><input type="checkbox" data-severity="critical" checked /> Critical</label>
+            <label><input type="checkbox" data-severity="high" checked /> High</label>
+            <label><input type="checkbox" data-severity="medium" checked /> Medium</label>
+            <label><input type="checkbox" data-severity="low" checked /> Low</label>
+            <label><input type="checkbox" data-severity="info" checked /> Info</label>
+          </fieldset>
+          <button id="clear-filters" class="btn btn-ghost" type="button">Clear</button>
+        </div>
+
+        <div id="sample-banner" class="banner banner-sample" hidden></div>
+        <div id="machines" class="machines"></div>
+        <div id="empty" class="empty" hidden>
+          <strong>No machines match these filters.</strong>
+          <span>Clear one or more filters, or enable sample data.</span>
+        </div>
+      </section>
+
+      <footer class="footer">
+        <p>
+          Ares runs entirely on this machine. Findings are matched against a bundled advisory snapshot and may be
+          incomplete; verify anything important at the cited source before acting.
+        </p>
+        <p id="meta-line" class="muted small"></p>
+      </footer>
+    </div>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
