@@ -228,7 +228,7 @@ export function mergeAiFindings(jobs, findings) {
 }
 
 /**
- * Run both independent review jobs concurrently. Never throws: failures are
+ * Run independent review jobs concurrently. Provider failures are
  * returned as per-job errors so the Windows assessment keeps its local result.
  */
 export async function runAiReview({ aiConfig, machine, findings, logger, fetchImpl = globalThis.fetch, onJob = () => {} }) {

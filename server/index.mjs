@@ -72,7 +72,7 @@ export async function runAres({ cwd = fileURLToPath(new URL('../', import.meta.u
     process.stdout.write(`The configured port was busy. Using ${app.url}\n`);
   }
   const aiLine = app.config.ai.available
-    ? `AI review available (model: ${app.config.ai.model}); external review is opt-in per assessment.`
+    ? `AI analysis runs automatically (model: ${app.config.ai.model}).`
     : 'AI review disabled (no ARES_AI_API_KEY / ARES_AI_ENABLED). Local assessment works normally.';
   process.stdout.write(
     [
