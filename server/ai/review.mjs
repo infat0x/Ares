@@ -7,6 +7,12 @@ const CONFIDENCE_RANK = { high: 0, medium: 1, low: 2 };
 
 export const AI_JOBS = [
   {
+    id: 'ports',
+    label: 'All open ports and services analysis',
+    task: 'Review every supplied listening TCP or bound UDP endpoint, including loopback and nonstandard ports. Assess exposure, known process and service roles, and concrete hardening opportunities. Port numbers alone do not prove a service identity or vulnerability. Unknown service identities and absent versions must remain explicit. Summarize coverage of this entire batch and return up to three prioritized evidence-linked concerns. Never invent service versions, CVEs or exploitability.',
+    kinds: ['endpoint']
+  },
+  {
     id: 'software',
     label: 'Software & OS advisory review',
     task: 'Explain the real-world risk of these software and operating-system advisories. For each item, state what an attacker could achieve and give the single most effective remediation. Flag weak local matches explicitly.',
@@ -25,6 +31,18 @@ export const AI_JOBS = [
     kinds: ['software', 'os-lifecycle', 'configuration']
   }
 ];
+
+export function buildPortEvidence(endpoints = []) {
+  return endpoints.map((endpoint, index) => ({
+    id: `endpoint-${index}`,
+    protocol: endpoint.protocol,
+    port: endpoint.port,
+    state: endpoint.state ?? 'unknown',
+    process: endpoint.process?.split(/[\\/]/).pop() || null,
+    service: endpoint.service ?? null,
+    binding: endpoint.loopbackOnly ? 'loopback' : endpoint.anyAddress ? 'all-interfaces' : 'specific-interface'
+  }));
+}
 
 export function buildSoftwareEvidence(findings = []) {
   return findings
@@ -72,11 +90,11 @@ export function buildJobPayload(job, evidence) {
   };
 }
 
-async function runJob({ job, findings, aiConfig, identifiers, logger, fetchImpl }) {
+async function runJob({ job, findings, aiConfig, identifiers, logger, fetchImpl, evidenceOverride = null }) {
   const startedAt = Date.now();
-  const evidence = job.id === 'validation'
+  const evidence = evidenceOverride ?? (job.id === 'validation'
     ? [...buildSoftwareEvidence(findings), ...buildConfigurationEvidence(findings)]
-    : job.id === 'software' ? buildSoftwareEvidence(findings) : buildConfigurationEvidence(findings);
+    : job.id === 'software' ? buildSoftwareEvidence(findings) : buildConfigurationEvidence(findings));
 
   if (evidence.length === 0 && job.id !== 'validation') {
     return {
@@ -145,6 +163,35 @@ async function runJob({ job, findings, aiConfig, identifiers, logger, fetchImpl 
       durationMs: Date.now() - startedAt
     };
   }
+}
+
+async function runPortJob({ job, machine, onJob, ...options }) {
+  const evidence = buildPortEvidence(machine.endpoints);
+  if (!evidence.length) return runJob({ ...options, job, evidenceOverride: [] });
+  const startedAt = Date.now();
+  const batches = [];
+  const batchSize = 30;
+  for (let offset = 0; offset < evidence.length; offset += batchSize) {
+    const result = await runJob({ ...options, job, evidenceOverride: evidence.slice(offset, offset + batchSize) });
+    batches.push(result);
+    onJob({ id: job.id, label: job.label, status: 'running',
+      evidenceCount: evidence.length,
+      reviewedEndpoints: batches.filter((batch) => batch.status === 'complete').reduce((total, batch) => total + batch.evidenceCount, 0),
+      completedBatches: batches.length, totalBatches: Math.ceil(evidence.length / batchSize) });
+  }
+  const failures = batches.filter((batch) => batch.status !== 'complete');
+  return {
+    id: job.id, label: job.label,
+    status: failures.length === 0 ? 'complete' : failures.length === batches.length ? 'error' : 'partial',
+    evidenceCount: evidence.length,
+    reviewedEndpoints: batches.filter((batch) => batch.status === 'complete').reduce((total, batch) => total + batch.evidenceCount, 0),
+    completedBatches: batches.length, totalBatches: batches.length,
+    items: batches.flatMap((batch) => batch.items ?? []),
+    summary: batches.map((batch, index) => `Batch ${index + 1}: ${batch.summary ?? batch.error ?? batch.status}`).join('\n'),
+    error: failures.length ? `${failures.length} port analysis batch(es) failed. ${failures[0].error ?? 'Invalid provider response.'}` : null,
+    model: options.aiConfig.model,
+    durationMs: Date.now() - startedAt
+  };
 }
 
 function normalizeTitle(title) {
@@ -253,7 +300,10 @@ export async function runAiReview({ aiConfig, machine, findings, logger, fetchIm
   const jobs = await Promise.all(
     AI_JOBS.map(async (job) => {
       onJob({ id: job.id, label: job.label, status: 'running' });
-      const result = await runJob({ job, findings, aiConfig, identifiers, logger, fetchImpl });
+      const options = { job, findings, aiConfig, identifiers, logger, fetchImpl };
+      const result = job.id === 'ports'
+        ? await runPortJob({ ...options, machine, onJob })
+        : await runJob(options);
       onJob(result);
       return result;
     })
@@ -261,9 +311,10 @@ export async function runAiReview({ aiConfig, machine, findings, logger, fetchIm
   const merge = mergeAiFindings(jobs, findings);
 
   const anyItems = jobs.some((job) => (job.items ?? []).length > 0);
+  const anyComplete = jobs.some((job) => job.status === 'complete');
   const allSkipped = jobs.every((job) => job.status === 'skipped');
   const allComplete = jobs.every((job) => job.status === 'complete' || job.status === 'skipped');
-  const status = allSkipped ? 'skipped' : allComplete ? 'complete' : anyItems ? 'partial' : 'error';
+  const status = allSkipped ? 'skipped' : allComplete ? 'complete' : anyItems || anyComplete ? 'partial' : 'error';
 
   return {
     status,

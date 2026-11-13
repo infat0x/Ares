@@ -158,7 +158,7 @@ function applyMeta() {
     ? 'Sends software/version facts and configuration observations. With web input probes enabled, AI chooses the next check from previous results. Target URLs, parameter names and response bodies stay local.'
     : 'No backend AI provider is configured. The local Windows assessment still runs normally.';
   $('ai-note').textContent = ai.available
-    ? 'AI starts automatically with each assessment. Web input checks and three parallel analysis agents appear in the pipeline.'
+    ? 'AI starts automatically with each assessment. Web checks, port/service analysis and parallel review agents appear in the pipeline.'
     : 'Open AI settings below and save your OpenCode API key to enable AI review.';
 
   const sampleInfo = state.meta?.samples;
@@ -506,6 +506,25 @@ function buildMachineDetail(machine) {
     )
   );
 
+  const portReview = machine.id === state.live?.id
+    ? state.assessment.ai?.jobs?.find((job) => job.id === 'ports') : null;
+  if (portReview && portReview.status !== 'skipped') sections.push(
+    section('AI port and service analysis', portReview.evidenceCount ?? 0,
+      el('div', {}, [
+        el('p', { class: 'muted small', text: `${portReview.status}: ${portReview.reviewedEndpoints ?? 0}/${portReview.evidenceCount ?? 0} collected endpoints reviewed.` }),
+        portReview.summary ? el('p', { text: portReview.summary }) : null,
+        ...(portReview.items ?? []).map((item) => el('article', { class: 'notice notice-info' }, [
+          el('strong', { text: item.title }),
+          el('span', { class: 'mono small', text: item.evidenceRefs.map((ref) => {
+            const endpoint = machine.endpoints?.[Number(ref.replace('endpoint-', ''))];
+            return endpoint ? `${endpoint.protocol}/${endpoint.port} (${endpoint.service ?? endpoint.process ?? 'unknown service'})` : ref;
+          }).join(', ') }),
+          el('p', { text: item.risk }),
+          el('p', { text: item.remediation })
+        ]))
+      ]), 'AI advisory analysis based on collected bindings and service metadata')
+  );
+
   if (machine.platform !== 'web') sections.push(
     section(
       'Listening endpoints',
@@ -746,7 +765,8 @@ function renderProgress() {
       : (state.meta?.collectors ?? []).map((collector) => ({ id: collector.id, label: collector.label, status: 'pending' }))) ];
   const addStage = (stage) => {
     const status = stage.status ?? 'pending';
-    collectors.push({ ...stage, note: status,
+    collectors.push({ ...stage, note: stage.id === 'ports' && stage.evidenceCount !== undefined
+      ? `${status} - ${stage.reviewedEndpoints ?? 0}/${stage.evidenceCount} endpoints` : status,
       status: ['complete', 'stopped', 'skipped', 'ok'].includes(status) ? 'ok'
         : ['error', 'partial', 'limit-reached', 'failed'].includes(status) ? 'error'
           : status === 'running' ? 'running' : 'pending' });
@@ -758,6 +778,7 @@ function renderProgress() {
   if (state.assessment.aiRequested || state.assessment.ai?.requested) {
     const jobs = state.assessment.ai?.jobs;
     for (const stage of jobs?.length ? jobs : [
+      { id: 'ports', label: 'All open ports and services analysis' },
       { id: 'software', label: 'Software & OS advisory review' },
       { id: 'configuration', label: 'Security configuration review' },
       { id: 'validation', label: 'Evidence validation and attack-path analysis' }
@@ -942,7 +963,7 @@ function connectStream(assessmentId) {
   source.addEventListener('ai', (event) => {
     try {
       state.assessment.ai = JSON.parse(event.data);
-      renderProgress();
+      renderAll();
       if (state.assessment.ai.status === 'running') {
         setStatus('AI review jobs are running concurrently…', 'running');
       }

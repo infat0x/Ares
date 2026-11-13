@@ -30,6 +30,8 @@ Rejimi seç və **Start assessment** bas.
 
 Açar lokal `data/ai-settings.json` faylında açıq mətnlə saxlanır.
 
+AI bütün toplanmış TCP/UDP portlarını, proses və servis adlarını, interfeysə bağlanma növünü 30 sətirlik hissələrlə analiz edir. Pipeline-da əhatə sayı, paneldə risklər və tövsiyələr görünür. IP ünvanları və PID-lər AI-yə göndərilmir. Naməlum servis və versiya əlavə təsdiq tələb edir.
+
 Web rejimində açar qurulubsa input probes avtomatik aktivləşir. AI agent əvvəlki müşahidələrə görə növbəti SQLi və ya HTML əksolunma yoxlamasını seçir. Seçilmiş URL-də maksimum 2 uyğun parametr və 4 AI qərarı ilə işləyir. Pipeline-da agent addımları və paralel proqram, konfiqurasiya və sübut analizi işlərinin vəziyyəti canlı görünür. AI xətasında standart yoxlamalar davam edir. Hədəf URL-si, parametr adları və cavab mətni planlayıcıya göndərilmir.
 
 ## Əsas qeydlər
